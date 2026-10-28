@@ -57,7 +57,7 @@ $("check").addEventListener("click",async()=>{
     };
     const score=Object.values(checks).filter(Boolean).length;
     const label=count>0?"Compromised":score===4?"Strong":score===3?"Fair":score===2?"Weak":"Very weak";
-    $("bar").style.width=(count>0?100:score/4*100)+"%";
+    $("bar").style.width=(count>0?0:score/4*100)+"%";
     $("strengthLabel").textContent=label;
     $("checks").innerHTML=Object.entries(checks).map(([k,v])=>'<span class="'+(v?"yes":"")+'">'+checkNames[k]+'</span>').join("");
     $("strengthMsg").textContent=count>0
