@@ -13,15 +13,57 @@
 <nav class="nav"><div class="brand">VAULT<span>line</span></div></nav>
 <section class="hero"><h1>Your passwords.<br><em>Better protected.</em></h1></section>
 <section class="grid">
-<article class="card"><h2>Password strength</h2><p class="sub">Check your password against length, character variety, and common-password patterns. Your password is checked when you press the button.</p><label class="field" for="pw">Try a password</label><input id="pw" type="password" autocomplete="new-password" maxlength="256" placeholder="Enter a password">
-<div class="strength" role="progressbar" aria-label="Password strength"><div id="bar"></div></div><strong id="strengthLabel">Not checked yet</strong><div id="checks" class="checks"></div><div class="actions"><button class="btn" id="check">Check strength</button><button class="btn secondary" id="toggle" type="button">Show / hide</button></div><div id="strengthMsg" class="message" aria-live="polite"></div></article>
+<article class="card"><h2>Password strength</h2><p class="sub">Checks length, common-password patterns, and known breach exposure. Your password is hashed in this browser; only a short hash prefix is sent to Have I Been Pwned.</p><label class="field" for="pw">Try a password</label><input id="pw" type="password" autocomplete="new-password" maxlength="256" placeholder="Enter a password">
+<div class="strength" role="progressbar" aria-label="Password strength"><div id="bar"></div></div><strong id="strengthLabel">Not checked yet</strong><div id="checks" class="checks"></div><div class="actions"><button class="btn" id="check">Check password</button><button class="btn secondary" id="toggle" type="button">Show / hide</button></div><div id="strengthMsg" class="message" aria-live="polite"></div><div class="note">Rules: use at least 15 characters for a password used by itself; avoid common or predictable passwords; never reuse passwords. A password found in known breaches should not be used. Symbols and numbers can help, but forced character combinations alone do not make a password secure. Breach screening by Have I Been Pwned uses a privacy-preserving hash-prefix lookup.</div></article>
 
 </section>
 
 </main>
 <script>
 const $=id=>document.getElementById(id);
-const checkNames={length:"12+ characters",upper:"Uppercase letter",lower:"Lowercase letter",number:"Number",symbol:"Symbol",notCommon:"Not a common password"};
-$("check").addEventListener("click",async()=>{const password=$("pw").value;$("strengthMsg").textContent="Checking…";try{const r=await fetch("/api/password-strength",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password})});const d=await r.json();if(!r.ok)throw Error(d.error||"Could not check.");$("bar").style.width=(d.score/6*100)+"%";$("strengthLabel").textContent=d.label;$("checks").innerHTML=Object.entries(d.checks).map(([k,v])=>'<span class="'+(v?"yes":"")+'">'+checkNames[k]+'</span>').join("");$("strengthMsg").textContent=d.advice;}catch(e){$("strengthMsg").textContent=e.message;}});
-$("toggle").addEventListener("click",()=>{$("pw").type=$("pw").type==="password"?"text":"password";});
-</script></body></html>
+const checkNames={length:"15+ characters recommended",common:"Not a common password",unique:"Use a unique password",pwned:"Not found in known breaches"};
+async function sha1Hex(value){
+  const bytes=new TextEncoder().encode(value);
+  const digest=await crypto.subtle.digest("SHA-1",bytes);
+  return [...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,"0")).join("").toUpperCase();
+}
+async function checkPwned(password){
+  const hash=await sha1Hex(password);
+  const prefix=hash.slice(0,5), suffix=hash.slice(5);
+  const response=await fetch("https://api.pwnedpasswords.com/range/"+prefix,{headers:{"Add-Padding":"true"}});
+  if(!response.ok) throw new Error("Breach screening is temporarily unavailable. Try again.");
+  const lines=(await response.text()).split(/\r?\n/);
+  let count=0;
+  for(const line of lines){
+    const [candidate,rawCount]=line.trim().split(":");
+    if(candidate && candidate.toUpperCase()===suffix) count=Number(rawCount)||0;
+  }
+  return count;
+}
+$("check").addEventListener("click",async()=>{
+  const password=$("pw").value;
+  if(!password){$("strengthMsg").textContent="Enter a password first.";return;}
+  if(password.length>256){$("strengthMsg").textContent="Use a password of 256 characters or fewer.";return;}
+  $("check").disabled=true;
+  $("strengthMsg").textContent="Checking password and breach exposure…";
+  $("checks").innerHTML="";
+  try{
+    const count=await checkPwned(password);
+    const checks={
+      length:password.length>=15,
+      common:!(/^(password|password123|qwerty|qwerty123|letmein|admin|admin123|welcome|welcome123|123456|123456789|iloveyou)$/i.test(password)),
+      unique:true,
+      pwned:count===0
+    };
+    const score=Object.values(checks).filter(Boolean).length;
+    const label=count>0?"Compromised":score===4?"Strong":score===3?"Fair":score===2?"Weak":"Very weak";
+    $("bar").style.width=(count>0?100:score/4*100)+"%";
+    $("strengthLabel").textContent=label;
+    $("checks").innerHTML=Object.entries(checks).map(([k,v])=>'<span class="'+(v?"yes":"")+'">'+checkNames[k]+'</span>').join("");
+    $("strengthMsg").textContent=count>0
+      ?"Found in known breaches "+count.toLocaleString()+" times. Do not use it; choose a new, unique passphrase."
+      : "Not found in the Pwned Passwords dataset. This does not guarantee the password has never been exposed. Use it only for one account.";
+  }catch(e){$("strengthMsg").textContent=e.message||"Could not complete the check.";}
+  finally{$("check").disabled=false;}
+});
+$("toggle").addEventListener("click",()=>{$("pw").type=$("pw").type==="password"?"text":"password";});</script></body></html>
