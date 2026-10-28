@@ -1,0 +1,9 @@
+{
+  "name": "vaultline",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Whimsical cybersecurity password-strength and secure registration app",
+  "engines": { "node": ">=20" },
+  "scripts": { "dev": "vercel dev" },
+  "dependencies": {}
+}
