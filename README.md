@@ -1,51 +1,51 @@
-# VAULTline 👻
+# VAULTline 🔐
 
-A whimsical cybersecurity mini-app for password-strength feedback and secure account access.
+**VAULTline** is a lightweight, privacy-conscious password strength checker. It evaluates basic password hygiene and checks whether a password appears in known breaches using the **Have I Been Pwned (HIBP) Pwned Passwords database**.
 
-## Vercel-ready architecture
+## Features
 
-- Static front end: `public/index.html`
-- Serverless Node.js endpoints: `api/password-strength.js` and `api/auth.js`
-- Authentication provider: Supabase Auth (password hashing, email verification, reset flows handled by Supabase)
-- Deployment config: `vercel.json`
+- Password strength feedback based on length, common-password checks, and predictable patterns.
+- Compromised-password screening against the HIBP Pwned Passwords dataset.
+- Clear warning when a password is found in known breaches, including the reported occurrence count.
+- A minimal, responsive interface built with HTML, CSS, and JavaScript.
 
-This repository was created as a Vercel-compatible implementation. It does not require a long-running Express server or local SQLite database.
+## Have I Been Pwned integration
 
-## Deploy
+VAULTline uses the [Have I Been Pwned Pwned Passwords API](https://haveibeenpwned.com/API/v3#PwnedPasswords) to check for known exposed passwords.
 
-1. Create a Supabase project.
-2. In Supabase Authentication settings, configure your site URL and allowed redirect URLs to your Vercel deployment URL.
-3. Import this repository into Vercel as a new project. Framework preset can be **Other**; root directory is the repository root.
-4. In Vercel → Settings → Environment Variables, add:
-   - `SUPABASE_URL`
-   - `SUPABASE_ANON_KEY`
-5. Redeploy after setting variables.
-6. Open the Vercel URL and test password strength, account creation, sign-in, and reset email.
+The check uses a **k-anonymity range request**:
 
-The anon/publishable key is designed for browser-facing use; never add a Supabase service-role key to this project. Configure Supabase Auth email confirmation and rate limits before using this beyond a demo.
+1. The browser calculates a SHA-1 hash of the entered password locally.
+2. Only the first five characters of that hash are sent to the HIBP range API.
+3. The browser compares the returned hash suffixes locally to find a match and its reported count.
 
-## Local development
+The full password and full hash are not sent to HIBP. A match means the password has appeared in the dataset and should not be used. A no-match result does **not** guarantee that a password has never been exposed or that it is safe.
 
-Install the Vercel CLI and run:
+## Password guidance
 
-```bash
-npm install
-npx vercel dev
-```
+- Use a long, unique password or passphrase. VAULTline recommends at least 15 characters for a password used by itself.
+- Avoid common and predictable passwords.
+- Never reuse a password across accounts.
+- If a password is flagged as compromised, replace it with a new, unique password.
 
-## Security notes
+The score is educational guidance, not a guarantee of security. Do not enter a password you currently use for a sensitive account into an unfamiliar website.
 
-- Passwords are submitted over HTTPS to Supabase Auth; this app does not store password hashes or credentials in its own database.
-- The strength endpoint never logs or stores the submitted password.
-- Sign-in access tokens are held in `sessionStorage` for the current browser tab, not persisted in local storage. For a production application with sensitive data, prefer a backend-managed HttpOnly session cookie architecture.
-- Add CAPTCHA / abuse protection and verify email-confirmation settings before opening registration publicly.
-- The strength checker is educational guidance, not a guarantee that a password is unguessable.
+## Tech stack
 
-## API
+- HTML
+- CSS
+- JavaScript (browser-side password checks and SHA-1 hashing)
+- Have I Been Pwned Pwned Passwords API
+- Vercel (static hosting / deployment)
 
-- `POST /api/password-strength` — accepts `{ "password": "..." }`, returns score, label, checks and advice.
-- `POST /api/auth` — accepts `{ "action": "signup|login|reset", "email": "...", "password": "..." }`. Password is not required for reset.
+## Run locally
 
-## Stack
+Open `public/index.html` in a browser, or serve the repository with a local static web server. The HIBP check requires an internet connection.
 
-HTML · CSS · JavaScript · Vercel Functions · Supabase Auth
+## Deployment
+
+Import the repository into Vercel and set the **Root Directory** to the repository root (leave it blank rather than entering `VAULTline`). Redeploy after saving the setting.
+
+## Credits
+
+- [Have I Been Pwned](https://haveibeenpwned.com/) — Pwned Passwords breach dataset and range API.
