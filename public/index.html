@@ -21,7 +21,7 @@
 </main>
 <script>
 const $=id=>document.getElementById(id);
-const checkNames={length:"15+ characters recommended",common:"Not a common password",unique:"Use a unique password",pwned:"Not found in known breaches"};
+const checkNames={length:"15+ characters recommended",common:"Not a common password",predictable:"Avoids simple patterns",pwned:"Not found in known breaches"};
 async function sha1Hex(value){
   const bytes=new TextEncoder().encode(value);
   const digest=await crypto.subtle.digest("SHA-1",bytes);
@@ -52,7 +52,7 @@ $("check").addEventListener("click",async()=>{
     const checks={
       length:password.length>=15,
       common:!(/^(password|password123|qwerty|qwerty123|letmein|admin|admin123|welcome|welcome123|123456|123456789|iloveyou)$/i.test(password)),
-      unique:true,
+      predictable:!(/(.)\\1{3,}/.test(password)||/^(0123|1234|2345|3456|4567|5678|6789|abcd|qwer|asdf|zxcv)/i.test(password)),
       pwned:count===0
     };
     const score=Object.values(checks).filter(Boolean).length;
